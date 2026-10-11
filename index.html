@@ -40,6 +40,9 @@ button:disabled{opacity:.55;cursor:default}
 .lv{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .lv button{min-width:0;text-align:center;padding:10px 4px!important}
 .lv span{display:block}
+.sk{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+#ov .sk button{text-align:center}
+.sk i{display:block;width:56px;height:56px;border-radius:50%;margin:0 auto 6px;background-color:#1b1333}
 </style>
 </head>
 <body>
@@ -69,10 +72,12 @@ var UPS=[
 ];
 var parts=[],ripples=[],vr=14,FREE,mode='free',state='menu',lvl=0,tLeft=0,tSurv=0,rivals=[],rTimer=0,rEaten=0,camp={un:1,stars:[]},best=0,S,objs=[],floats=[],W=0,H=0,zoom=1.5,pulse=0,eaten=0,keys={},ptr={x:0,y:0,on:false},resetArmed=false;
 
-function fresh(){return {coins:0,r:14,area:0,x:0,y:0,up:{speed:0,pull:0,coin:0,grow:0}};}
+function fresh(){return {coins:0,r:14,area:0,x:0,y:0,up:{speed:0,pull:0,coin:0,grow:0},skins:['classic'],skin:'classic'};}
 function load(){FREE=fresh();try{var d=JSON.parse(localStorage.getItem('tinyhole')||'null');
  if(d&&typeof d==='object'){var f=fresh();f.coins=isFinite(d.coins)?Math.max(0,+d.coins):0;f.r=isFinite(d.r)?Math.max(14,+d.r):14;f.area=Math.min(AREAS.length-1,Math.max(0,(+d.area||0)|0));
-  for(var k in f.up)f.up[k]=Math.max(0,Math.min(10,(+(d.up&&d.up[k])||0)|0));FREE=f;}}catch(e){}S=FREE;}
+  for(var k in f.up)f.up[k]=Math.max(0,Math.min(10,(+(d.up&&d.up[k])||0)|0));
+  if(Array.isArray(d.skins))f.skins=['classic'].concat(d.skins.filter(function(id){return id!=='classic'&&SKINS.some(function(x){return x.id===id;});}));
+  f.skin=f.skins.indexOf(d.skin)>=0?d.skin:'classic';FREE=f;}}catch(e){}S=FREE;}
 function save(){try{localStorage.setItem('tinyhole',JSON.stringify(FREE));}catch(e){}}
 function cost(u){return Math.round(u.base*Math.pow(1.65,FREE.up[u.k]));}
 
@@ -160,11 +165,12 @@ function draw(){
   ctx.strokeStyle=dang?'#ff4040':'#7bd88f';ctx.lineWidth=rv.r*.08;ctx.beginPath();ctx.arc(rv.x,rv.y,rv.r,0,6.283);ctx.stroke();
  }
  var r=vr*(1+pulse*.05),gr=ctx.createRadialGradient(S.x,S.y,r*.9,S.x,S.y,r*(2.1+pulse*.4));
- gr.addColorStop(0,'rgba(255,79,154,.55)');gr.addColorStop(1,'rgba(255,79,154,0)');
+ var K=skinFx();gr.addColorStop(0,K.g0);gr.addColorStop(1,K.g1);
  ctx.fillStyle=gr;ctx.beginPath();ctx.arc(S.x,S.y,r*(2.1+pulse*.4),0,6.283);ctx.fill();
  ctx.fillStyle='#000';ctx.beginPath();ctx.arc(S.x,S.y,r,0,6.283);ctx.fill();
- ctx.strokeStyle='#ffb347';ctx.lineWidth=r*(.07+pulse*.05);ctx.beginPath();ctx.arc(S.x,S.y,r,0,6.283);ctx.stroke();
- for(var q2=0;q2<ripples.length;q2++){var pr2=ripples[q2].t/.45;ctx.globalAlpha=1-pr2;ctx.strokeStyle='#ffb347';ctx.lineWidth=vr*.06;ctx.beginPath();ctx.arc(S.x,S.y,vr*(1+pr2*.9),0,6.283);ctx.stroke();}
+ ctx.strokeStyle=K.rim;ctx.lineWidth=r*(.07+pulse*.05);ctx.beginPath();ctx.arc(S.x,S.y,r,0,6.283);ctx.stroke();
+ if(K.fx==='ring2'){ctx.lineWidth=r*.025;ctx.beginPath();ctx.arc(S.x,S.y,r*1.18,0,6.283);ctx.stroke();}
+ for(var q2=0;q2<ripples.length;q2++){var pr2=ripples[q2].t/.45;ctx.globalAlpha=1-pr2;ctx.strokeStyle=skinFx().rim;ctx.lineWidth=vr*.06;ctx.beginPath();ctx.arc(S.x,S.y,vr*(1+pr2*.9),0,6.283);ctx.stroke();}
  for(var q3=0;q3<parts.length;q3++){var pq=parts[q3];ctx.globalAlpha=1-pq.t/.5;ctx.fillStyle=pq.col;ctx.beginPath();ctx.arc(pq.x,pq.y,vr*.07,0,6.283);ctx.fill();}
  ctx.globalAlpha=1;
  ctx.restore();
@@ -229,13 +235,29 @@ function sfxLose(){tone(300,.5,'sawtooth',.06,80);}
 function sndLabel(){sndBtn.textContent=muted?'Sound off':'Sound on';}
 sndBtn.onclick=function(){muted=!muted;sndLabel();saveMeta();};
 addEventListener('pointerdown',au);addEventListener('keydown',au);
+var SKINS=[
+ {id:'classic',n:'Classic',price:0,rim:'#ffb347',glow:'255,79,154'},
+ {id:'ember',n:'Ember',price:500,rim:'#ff6a2b',glow:'255,70,20'},
+ {id:'frost',n:'Frost',price:800,rim:'#8fe3ff',glow:'70,180,255'},
+ {id:'toxic',n:'Toxic',price:1200,rim:'#9dff5a',glow:'80,255,60'},
+ {id:'royal',n:'Royal',price:2000,rim:'#d6a8ff',glow:'160,80,255',fx:'ring2'},
+ {id:'nova',n:'Supernova',price:5000,rim:'#ffffff',glow:'255,255,255',fx:'rainbow'}
+];
+function skinFx(){var sk=SKINS.filter(function(x){return x.id===FREE.skin;})[0]||SKINS[0];
+ if(sk.fx==='rainbow'){var h=(performance.now()/12)%360|0;return {rim:'hsl('+h+',100%,65%)',g0:'hsla('+h+',100%,60%,.55)',g1:'hsla('+h+',100%,60%,0)',fx:'rainbow'};}
+ return {rim:sk.rim,g0:'rgba('+sk.glow+',.55)',g1:'rgba('+sk.glow+',0)',fx:sk.fx};}
+function skinCss(sk){return sk.fx==='rainbow'?'radial-gradient(circle,#000 55%,transparent 56%),conic-gradient(red,yellow,lime,cyan,blue,magenta,red)':'radial-gradient(circle,#000 50%,'+sk.rim+' 52%,'+sk.rim+' 62%,rgba('+sk.glow+',.35) 66%,transparent 78%)';}
+function showShop(){state='menu';var h='<h2>Skin shop</h2><p>'+Math.floor(FREE.coins)+' coins. Skins only change how your hole looks, in every mode.</p><div class="sk">';
+ SKINS.forEach(function(sk){var own=FREE.skins.indexOf(sk.id)>=0,eq=FREE.skin===sk.id,ok=own||FREE.coins>=sk.price;
+  h+='<button data-a="skin" data-k="'+sk.id+'"'+(ok?'':' disabled')+(eq?' class="can"':'')+'><i style="background:'+skinCss(sk)+'"></i><b>'+sk.n+'</b><span>'+(eq?'Equipped':own?'Owned. Tap to equip':sk.price+' coins')+'</span></button>';});
+ panel(h+'</div><button data-a="menu"><b>Back</b></button>');}
 function updShop(){UPS.forEach(function(u){var b=btns[u.k],l=FREE.up[u.k],max=l>=10,c=cost(u);b.firstChild.textContent=u.n+' '+l+(max?' (max)':'');b.lastChild.textContent=max?u.d:c+' coins · '+u.d;b.disabled=max||FREE.coins<c;b.className=(!max&&FREE.coins>=c)?'can':'';});}
 function stars(n){return '\u2605'.repeat(n)+'\u2606'.repeat(3-n);}
 function loadMeta(){try{var m=JSON.parse(localStorage.getItem('tinyhole_m')||'null');if(m){camp.un=m.un||1;camp.stars=m.stars||[];best=m.best||0;muted=!!m.mute;sndLabel();}}catch(e){}}
 function saveMeta(){try{localStorage.setItem('tinyhole_m',JSON.stringify({un:camp.un,stars:camp.stars,best:best,mute:muted}));}catch(e){}}
 function panel(h){ov.innerHTML='<div class="pn">'+h+'</div>';ov.style.display='flex';}
 function showMenu(){state='menu';hint.style.opacity=0;
- panel('<h1>Tiny Hole</h1><p>Pick a mode.</p><button data-a="free"><b>Free play</b><span>Grow, earn coins and buy upgrades</span></button><button data-a="camp"><b>Campaign</b><span>8 levels. Reach the goal size before time runs out</span></button><button data-a="surv"><b>Endless survival</b><span>You shrink over time. Eat to live and avoid bigger holes. Best score '+best+'</span></button><button data-a="upg"><b>Upgrades</b><span>Your hole, shared by all modes. '+Math.floor(FREE.coins)+' coins</span></button>');}
+ panel('<h1>Tiny Hole</h1><p>Pick a mode.</p><button data-a="free"><b>Free play</b><span>Grow, earn coins and buy upgrades</span></button><button data-a="camp"><b>Campaign</b><span>8 levels. Reach the goal size before time runs out</span></button><button data-a="surv"><b>Endless survival</b><span>You shrink over time. Eat to live and avoid bigger holes. Best score '+best+'</span></button><button data-a="upg"><b>Upgrades</b><span>Your hole, shared by all modes. '+Math.floor(FREE.coins)+' coins</span></button><button data-a="shop"><b>Skin shop</b><span>Premium skins for your hole. '+FREE.skins.length+' of '+SKINS.length+' owned</span></button>');}
 function showLevels(){state='menu';var h='<h2>Campaign</h2><p>Reach the goal size before time runs out. More time left earns more stars.</p><div class="lv">';
  LEVELS.forEach(function(L0,i){var L=lv(i),lk=i>=camp.un;h+='<button data-a="lvl" data-l="'+i+'"'+(lk?' disabled':'')+'><b>'+(i+1)+'</b><span>'+(lk?'Locked':'Goal '+L.g+', '+L.t+'s')+'</span><span>'+(lk?'':stars(camp.stars[i]||0))+'</span></button>';});
  panel(h+'</div><button data-a="menu"><b>Back</b></button>');}
@@ -295,7 +317,8 @@ function modeUi(){
 ov.onclick=function(e){var b=e.target.closest('button');if(!b||b.disabled)return;var a=b.dataset.a;
  if(a==='free')startMode('free');else if(a==='camp')showLevels();else if(a==='surv')startMode('survival');
  else if(a==='lvl')startMode('campaign',+b.dataset.l);else if(a==='next')startMode('campaign',lvl+1);
- else if(a==='retry')startMode(mode,lvl);else if(a==='menu')showMenu();else if(a==='upg')showUpgrades();
+ else if(a==='retry')startMode(mode,lvl);else if(a==='menu')showMenu();else if(a==='upg')showUpgrades();else if(a==='shop')showShop();
+ else if(a==='skin'){var sk=SKINS.filter(function(x){return x.id===b.dataset.k;})[0];if(FREE.skins.indexOf(sk.id)<0){if(FREE.coins<sk.price)return;FREE.coins-=sk.price;FREE.skins.push(sk.id);sfxBuy();}FREE.skin=sk.id;save();showShop();}
  else if(a==='buy'){var u=UPS.filter(function(x){return x.k===b.dataset.k;})[0],c=cost(u);if(FREE.up[u.k]<10&&FREE.coins>=c){FREE.coins-=c;FREE.up[u.k]++;save();sfxBuy();showUpgrades();}}
  else if(a==='reset'){if(!resetArmed){resetArmed=true;b.firstChild.textContent='Click again to erase everything';return;}FREE=fresh();S=FREE;camp={un:1,stars:[]};best=0;resetArmed=false;save();saveMeta();showMenu();}};
 document.getElementById('menuBtn').onclick=function(){if(state==='play'){save();showMenu();}};
